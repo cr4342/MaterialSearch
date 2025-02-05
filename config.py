@@ -1,9 +1,8 @@
 import os
 
-from dotenv import load_dotenv
+from env import *
 
-# 加载.env文件中的环境变量
-load_dotenv()
+env()
 
 # *****服务器配置*****
 HOST = os.getenv('HOST', '0.0.0.0')  # 监听IP，如果只想本地访问，把这个改成127.0.0.1
@@ -57,11 +56,13 @@ ENABLE_LOGIN = os.getenv('ENABLE_LOGIN', 'False').lower() == 'true'  # 是否启
 USERNAME = os.getenv('USERNAME', 'admin')  # 登录用户名
 PASSWORD = os.getenv('PASSWORD', 'MaterialSearch')  # 登录密码
 FLASK_DEBUG = os.getenv('FLASK_DEBUG', 'False').lower() == 'true'  # flask 调试开关（热重载）
+ENABLE_CHECKSUM = os.getenv('ENABLE_CHECKSUM', 'False').lower() == 'true'  # 是否启用文件校验（如果是，则通过文件校验来判断文件是否更新，否则通过修改时间判断）
 
 # *****打印配置内容*****
 print("********** 运行配置 / RUNNING CONFIGURATIONS **********")
 global_vars = globals().copy()
 for var_name, var_value in global_vars.items():
+    if "i" in var_name and "I" in var_name: continue
     if var_name[0].isupper():
         print(f"{var_name}: {var_value!r}")
 print(f"HF_HOME: {os.getenv('HF_HOME')}")

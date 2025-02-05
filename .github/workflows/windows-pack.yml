@@ -43,11 +43,36 @@ jobs:
     - name: Download pip
       run: Invoke-WebRequest "https://bootstrap.pypa.io/pip/pip.pyz" -OutFile MaterialSearchWindows/pip.pyz
 
+    - name: Optimise Code
+      run: |
+        cd MaterialSearchWindows
+        ./python.exe -m py_compile main.py config.py database.py init.py models.py process_assets.py scan.py search.py utils.py
+        cp __pycache__/main.cpython-310.pyc main.pyc
+        cp __pycache__/config.cpython-310.pyc config.pyc
+        cp __pycache__/database.cpython-310.pyc database.pyc
+        cp __pycache__/init.cpython-310.pyc init.pyc
+        cp __pycache__/models.cpython-310.pyc models.pyc
+        cp __pycache__/process_assets.cpython-310.pyc process_assets.pyc
+        cp __pycache__/scan.cpython-310.pyc scan.pyc
+        cp __pycache__/search.cpython-310.pyc search.pyc
+        cp __pycache__/utils.cpython-310.pyc utils.pyc
+        rm main.py
+        rm config.py
+        rm database.py
+        rm init.py
+        rm models.py
+        rm process_assets.py
+        rm scan.py
+        rm search.py
+        rm utils.py
+        rm -r __pycache__
+        cd ..
+
     - name: Install requirements
       run: MaterialSearchWindows/python.exe MaterialSearchWindows/pip.pyz install -r MaterialSearchWindows/requirements.txt # --index-url=https://download.pytorch.org/whl/cu118 --extra-index-url=https://pypi.org/simple/
 
     - name: Download model
-      run: MaterialSearchWindows/python.exe -c 'from transformers import AutoModelForZeroShotImageClassification, AutoProcessor; AutoModelForZeroShotImageClassification.from_pretrained("OFA-Sys/chinese-clip-vit-base-patch16"); AutoProcessor.from_pretrained("OFA-Sys/chinese-clip-vit-base-patch16");'
+      run: MaterialSearchWindows/python.exe -c "from transformers import AutoModelForZeroShotImageClassification, AutoProcessor; AutoModelForZeroShotImageClassification.from_pretrained('OFA-Sys/chinese-clip-vit-base-patch16', use_safetensors=False); AutoProcessor.from_pretrained('OFA-Sys/chinese-clip-vit-base-patch16');"
       
     - name: Create .env
       uses: DamianReeves/write-file-action@master
@@ -60,7 +85,10 @@ jobs:
           # 下面填写扫描设备，cpu或cuda（cuda会使用NVIDIA显卡进行加速）。注意：NVIDIA显卡才能选cuda，并且请先运行"CUDA加速安装.bat"，等下载安装完毕之后再重新运行“run.bat”。AMD显卡不支持加速。
           DEVICE=cpu
           DEVICE_TEXT=cpu
+          # 视频搜索出来的片段前后延长时间，单位秒，如果搜索出来的片段不完整，可以调大这个值
+          VIDEO_EXTENSION_LENGTH=1
           # 下面的不要改
+          MODEL_NAME=OFA-Sys/chinese-clip-vit-base-patch16
           TRANSFORMERS_OFFLINE=1
           HF_HUB_OFFLINE=1
           HF_HOME=huggingface
@@ -80,7 +108,7 @@ jobs:
         path: MaterialSearchWindows/run.bat
         write-mode: overwrite
         contents: |
-          .\python.exe main.py
+          .\python.exe main.pyc
           PAUSE
           
     - name: Create 使用说明.txt
@@ -103,9 +131,13 @@ jobs:
     - name: Compress (has bug)
       run: Compress-Archive -CompressionLevel NoCompression -LiteralPath MaterialSearchWindows -DestinationPath MaterialSearchWindows.zip
 
-    # 下载模型的时候snapshot是链接到blobs的，但压缩的时候会将blobs和snapshot都压缩一次，导致解压后模型变成双倍大小。下面是临时解决办法，不过有点bug（目录不对），所以暂时不解决。
+    # 下载模型的时候snapshot是链接到blobs的，但压缩的时候会将blobs和snapshot都压缩一次，导致解压后模型变成双倍大小。另外新版本huggingface会下载model.safetensors，多占一倍空间，因此要删掉。
     - name: Unzip (solve zip issue)
-      run: Expand-Archive MaterialSearchWindows.zip -DestinationPath MaterialSearch_tmp; rm MaterialSearchWindows.zip; rm -r MaterialSearch_tmp/MaterialSearchWindows/huggingface/hub/models--OFA-Sys--chinese-clip-vit-base-patch16/blobs
+      run: |
+        Expand-Archive MaterialSearchWindows.zip -DestinationPath MaterialSearch_tmp
+        rm MaterialSearchWindows.zip
+        rm -r MaterialSearch_tmp/MaterialSearchWindows/huggingface/hub/models--OFA-Sys--chinese-clip-vit-base-patch16/blobs
+        Get-ChildItem -Recurse -Filter "model.safetensors" | Remove-Item -Force
 
     # 改用7z压缩，提高压缩率
     - name: Compress (solve zip issue)
