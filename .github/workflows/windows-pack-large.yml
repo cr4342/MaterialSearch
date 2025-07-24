@@ -18,27 +18,27 @@ jobs:
         path: MaterialSearchWindows
 
     - name: Download Python
-      run: Invoke-WebRequest "https://www.python.org/ftp/python/3.10.11/python-3.10.11-embed-amd64.zip" -OutFile python.zip
+      run: Invoke-WebRequest "https://www.python.org/ftp/python/3.12.9/python-3.12.9-embed-amd64.zip" -OutFile python.zip
 
     - name: Unzip Python
       run: Expand-Archive python.zip -DestinationPath MaterialSearchWindows
 
-    - name: Fix python310._pth
+    - name: Fix python312._pth
       uses: DamianReeves/write-file-action@master
       with:
-        path: MaterialSearchWindows/python310._pth
+        path: MaterialSearchWindows/python312._pth
         write-mode: append
         contents: |
           import site
 
     - name: Download FFMpeg
-      run: Invoke-WebRequest "https://github.com/GyanD/codexffmpeg/releases/download/7.0/ffmpeg-7.0-full_build.zip" -OutFile ffmpeg.zip
+      run: Invoke-WebRequest "https://github.com/GyanD/codexffmpeg/releases/download/7.1.1/ffmpeg-7.1.1-full_build.zip" -OutFile ffmpeg.zip
 
     - name: Unzip FFMpeg
       run: Expand-Archive ffmpeg.zip -DestinationPath .
 
     - name: Copy FFMpeg
-      run: cp ffmpeg-7.0-full_build/bin/ffmpeg.exe MaterialSearchWindows
+      run: cp ffmpeg-7.1.1-full_build/bin/ffmpeg.exe MaterialSearchWindows
 
     - name: Download pip
       run: Invoke-WebRequest "https://bootstrap.pypa.io/pip/pip.pyz" -OutFile MaterialSearchWindows/pip.pyz
@@ -47,15 +47,15 @@ jobs:
       run: |
         cd MaterialSearchWindows
         ./python.exe -m py_compile main.py config.py database.py init.py models.py process_assets.py scan.py search.py utils.py
-        cp __pycache__/main.cpython-310.pyc main.pyc
-        cp __pycache__/config.cpython-310.pyc config.pyc
-        cp __pycache__/database.cpython-310.pyc database.pyc
-        cp __pycache__/init.cpython-310.pyc init.pyc
-        cp __pycache__/models.cpython-310.pyc models.pyc
-        cp __pycache__/process_assets.cpython-310.pyc process_assets.pyc
-        cp __pycache__/scan.cpython-310.pyc scan.pyc
-        cp __pycache__/search.cpython-310.pyc search.pyc
-        cp __pycache__/utils.cpython-310.pyc utils.pyc
+        cp __pycache__/main.cpython-312.pyc main.pyc
+        cp __pycache__/config.cpython-312.pyc config.pyc
+        cp __pycache__/database.cpython-312.pyc database.pyc
+        cp __pycache__/init.cpython-312.pyc init.pyc
+        cp __pycache__/models.cpython-312.pyc models.pyc
+        cp __pycache__/process_assets.cpython-312.pyc process_assets.pyc
+        cp __pycache__/scan.cpython-312.pyc scan.pyc
+        cp __pycache__/search.cpython-312.pyc search.pyc
+        cp __pycache__/utils.cpython-312.pyc utils.pyc
         rm main.py
         rm config.py
         rm database.py
@@ -69,7 +69,7 @@ jobs:
         cd ..
 
     - name: Install requirements
-      run: MaterialSearchWindows/python.exe MaterialSearchWindows/pip.pyz install -r MaterialSearchWindows/requirements.txt # --index-url=https://download.pytorch.org/whl/cu118 --extra-index-url=https://pypi.org/simple/
+      run: MaterialSearchWindows/python.exe MaterialSearchWindows/pip.pyz install -r MaterialSearchWindows/requirements_windows.txt
 
     - name: Download model
       run: MaterialSearchWindows/python.exe -c "from transformers import AutoModelForZeroShotImageClassification, AutoProcessor; AutoModelForZeroShotImageClassification.from_pretrained('OFA-Sys/chinese-clip-vit-large-patch14-336px', use_safetensors=False); AutoProcessor.from_pretrained('OFA-Sys/chinese-clip-vit-large-patch14-336px');"
@@ -80,27 +80,32 @@ jobs:
         path: MaterialSearchWindows/.env
         write-mode: overwrite
         contents: |
+          # 注意：你用的这个整合包是大模型，显存不够16G请下载小模型的版本，否则可能无法正常运行！
           # 下面添加扫描路径，用逗号分隔
           ASSETS_PATH=C:\Users\Administrator\Pictures,C:\Users\Administrator\Videos
-          # 下面填写扫描设备，cpu或cuda（cuda会使用NVIDIA显卡进行加速）。注意：NVIDIA显卡才能选cuda，并且请先运行"CUDA加速安装.bat"，等下载安装完毕之后再重新运行“run.bat”。AMD显卡不支持加速。
-          DEVICE=cpu
-          DEVICE_TEXT=cpu
+          # 如果路径或文件名包含这些字符串，就跳过，逗号分隔，不区分大小写
+          IGNORE_STRINGS=thumb,avatar,__MACOSX,icons,cache
+          # 图片最小宽度，小于此宽度则忽略。不需要可以改成0
+          IMAGE_MIN_WIDTH=64
+          # 图片最小高度，小于此高度则忽略。不需要可以改成0。
+          IMAGE_MIN_HEIGHT=64
+          # 视频每隔多少秒取一帧，视频展示的时候，间隔小于等于2倍FRAME_INTERVAL的算为同一个素材，同时开始时间和结束时间各延长0.5个FRAME_INTERVAL，要求为整数，最小为1
+          FRAME_INTERVAL=2
           # 视频搜索出来的片段前后延长时间，单位秒，如果搜索出来的片段不完整，可以调大这个值
           VIDEO_EXTENSION_LENGTH=1
+          # 支持的图片拓展名，逗号分隔，请填小写
+          IMAGE_EXTENSIONS=.jpg,.jpeg,.png,.gif,.heic,.webp,.bmp
+          # 支持的视频拓展名，逗号分隔，请填小写
+          VIDEO_EXTENSIONS=.mp4,.flv,.mov,.mkv,.webm,.avi
+          # 监听IP，如果想允许远程访问，把这个改成0.0.0.0
+          HOST=127.0.0.1
+          # 监听端口
+          PORT=8085
           # 下面的不要改
-          MODEL_NAME=OFA-Sys/chinese-clip-vit-large-patch14-336px
           TRANSFORMERS_OFFLINE=1
           HF_HUB_OFFLINE=1
           HF_HOME=huggingface
-          
-    - name: Create CUDA加速安装.bat
-      uses: DamianReeves/write-file-action@master
-      with:
-        path: MaterialSearchWindows/CUDA加速安装.bat
-        write-mode: overwrite
-        contents: |
-          .\python.exe pip.pyz install -U "torch>=2.0,<2.4" --index-url=https://download.pytorch.org/whl/cu118
-          PAUSE
+          MODEL_NAME=OFA-Sys/chinese-clip-vit-large-patch14-336px
 
     - name: Create run.bat
       uses: DamianReeves/write-file-action@master
@@ -117,8 +122,6 @@ jobs:
         path: MaterialSearchWindows/使用说明.txt
         write-mode: overwrite
         contents: |
-          ！！！注意：如果你的电脑本来已经装过其它整合包（如 Stable Diffusion 等），可能会导致python环境冲突，进而使得本整合包无法使用。如遇到这种情况，请清理之前的环境，或者尝试双击“install.bat”更新环境。
-          如果你是NVIDIA显卡且想使用显卡加速，则请先双击运行“CUDA加速安装.bat”。如果你是用AMD显卡，或者不想用显卡加速，则跳过这一步。
           右键“.env”文件进行编辑，配置扫描路径和设备，然后保存。
           最后双击运行“run.bat”即可，待看到"http://127.0.0.1:8085"的输出就可以浏览器打开对应链接进行使用。
           关闭“run.bat”的运行框即关闭程序。

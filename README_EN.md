@@ -18,24 +18,26 @@ Online Demo：https://chn-lee-yumi.github.io/MaterialSearchWebDemo/
 
 ### Deployment via Source Code
 
-First, install the Python environment and then download the code from this repository.
+First, install the Python environment (version 3.9 or higher) and then download the code from this repository.
 
 Note that the first run will automatically download the models. The download speed may be slow, so please be patient. If the network is poor, the model download may fail. In that case, simply rerun the program.
 
-1. Install the dependencies before first use: `pip install -U -r requirements.txt`. For Windows systems, you can double-click on `install.bat` (for NVIDIA GPU acceleration) or `install_cpu.bat` (for pure CPU).
-2. If you plan to use GPU acceleration, run the benchmark to determine whether the CPU or GPU is faster: `python benchmark.py`. For Windows systems, you can double-click on `benchmark.bat`. Note that GPU is not necessarily faster than CPU; on my Mac, CPU is faster.
-3. If it is not the CPU that is fastest, modify the `DEVICE` settings in the configuration file to correspond to the appropriate device (refer to the configuration instructions below for how to modify the configuration).
-4. Start the program: `python main.py`. For Windows systems, you can double-click on `run.bat`.
+1. Install the dependencies before first use: `pip install -U -r requirements.txt`. For Windows systems, use `requirements_windows.txt` instead, or you can double-click on `install.bat`.
+2. Start the program: `python main.py`. For Windows systems, you can double-click on `run.bat`.
+
+Note: The `requirements.txt` uses the CPU versions of `torch` and `faiss`. If you wish to enable GPU acceleration, please adjust the settings accordingly.
 
 If you encounter any issues with the version dependencies in `requirements.txt` (for example, if a library version is too new and causes errors), please provide feedback by opening an issue. I will add version range restrictions.
 
-If you encounter issues with hardware support but are unable to use GPU acceleration, please update the torch version according to the [PyTorch documentation](https://pytorch.org/get-started/locally/).
-
-To use the "Download Video Segments" feature, you need to install `ffmpeg`. If you are using Windows, remember to add the directory where `ffmpeg.exe` is located to the `PATH` environment variable. You can refer to a [Bing search](https://bing.com/search?q=windows+add+path+environment+variable) for instructions.
+To use the "Download Video Segments" feature, you need to install `ffmpeg`. If you are using Windows, you can run `install_ffmpeg.bat` to install.
 
 ### Deployment via Docker
 
-Currently, there is only one Docker image available, which supports both `amd64` and `arm64` architectures. It includes the default models (`OFA-Sys/chinese-clip-vit-base-patch16`) and supports GPU acceleration (only for `amd64` architecture). If you have additional requirements, please open an issue.
+Supports both `amd64` and `arm64` architectures. It includes the default models (`OFA-Sys/chinese-clip-vit-base-patch16`) and supports GPU acceleration (only for `amd64` architecture).
+
+Image repositories:
+- [yumilee/materialsearch](https://hub.docker.com/r/yumilee/materialsearch) (DockerHub)
+- registry.cn-hongkong.aliyuncs.com/chn-lee-yumi/materialsearch (Aliyun, recommended for users in Mainland China)
 
 Before starting the image, you need to prepare:
 
@@ -56,16 +58,14 @@ Note:
 
 All configurations are in the `config.py` file, which contains detailed comments.
 
-It is recommended to modify the configuration through environment variables or by creating a `.env` file in the project root directory. If a corresponding variable is not configured, the default value in `config.py` will be used. For example, `os.getenv('HOST', '0.0.0.0')` will default to `0.0.0.0` if the `HOST` variable is not configured.
+It is recommended to modify the configuration through environment variables or by creating a `.env` file in the project root directory. If a corresponding variable is not configured, the default value in `config.py` will be used. For example, `os.getenv('HOST', '127.0.0.1')` will default to `127.0.0.1` if the `HOST` variable is not configured.
 
 Example `.env` file configuration:
 
 ```conf
 ASSETS_PATH=C:/Users/Administrator/Pictures,C:/Users/Administrator/Videos
-DEVICE=cuda
+SKIP_PATH=C:/Users/Administrator/AppData
 ```
-
-The functionality is still being iterated upon, so the configuration may change frequently. If you find that the application fails to start after updating to a new version, please refer to the latest configuration file and manually modify the configuration accordingly.
 
 If you find that certain formats of images or videos are not being scanned, you can try adding the corresponding file extensions to `IMAGE_EXTENSIONS` and `VIDEO_EXTENSIONS`. If you find that some supported extensions have not been added to the code, please feel free to open an issue or submit a pull request to add them.
 
@@ -90,17 +90,13 @@ I am doing this project purely "for the love of it" (which means, in fact, I am 
 
 ## Hardware Requirements
 
-It is recommended to use a `amd64` or `arm64` architecture CPU. The minimum requirement is 2GB of memory, but it is recommended to have at least 4GB of memory. If you have a large number of photos, it is recommended to increase the amount of memory.
-
-Test environment: J3455 CPU, 8GB of memory. Allwinner H6, 2GB of memory.
-
-If you are using an AMD GPU, GPU acceleration is only supported on Linux. Please refer to the [PyTorch documentation](https://pytorch.org/get-started/locally/).
+It is recommended to use a `amd64 (x86_64)` or `arm64 (aarch64)` architecture CPU. The minimum requirement is 2GB of memory, but it is recommended to have at least 4GB of memory. If you have a large number of photos, it is recommended to increase the amount of memory.
 
 ## Search Speed
 
-On a J3455 CPU, when search threshold is 0, approximately 18,000 image matches or 5,200 video frame matches can be performed in 1 second.
+Test environment: J3455 CPU, 8GB of memory.
 
-Increasing the search threshold can speed up searching speed. On a J3455 CPU, when search threshold is 10, approximately 30,000 image matches or 6,100 video frame matches can be performed in 1 second.
+On a J3455 CPU, approximately 31,000 image matches or 25,000 video frame matches can be performed in 1 second.
 
 ## Known Issues
 
@@ -113,3 +109,4 @@ Increasing the search threshold can speed up searching speed. On a J3455 CPU, wh
 Pull requests are welcome! However, to avoid meaningless work, it is recommended to open an issue for discussion before submitting a pull request.
 
 Before submitting a pull request, please ensure that the code has been formatted.
+

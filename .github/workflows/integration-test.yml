@@ -12,7 +12,9 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest]  # 支持 Linux 和 Windows
+        os: [ubuntu-latest, windows-latest, ubuntu-24.04-arm]  # 支持 Linux 和 Windows
+        python-version: ["3.12"]  # 测试 Python 3.12
+        
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -20,26 +22,47 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install winget (only on Windows)
+        if: runner.os == 'Windows'
+        uses: Cyberboss/install-winget@v1
 
       - name: Install requirements
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
           pip install pytest
+          if [ "${{ matrix.os }}" == "windows-latest" ]; then
+            powershell -ExecutionPolicy Bypass ./install_ffmpeg.ps1
+            pip install -r requirements_windows.txt
+          else
+            sudo apt-get update && sudo apt-get install -y ffmpeg
+            pip install -r requirements.txt
+          fi
+        shell: bash
 
       - name: Create .env file
         run: echo "ASSETS_PATH=./" > .env
 
       - name: Run main.py
         run: |
-          if [ "${{ matrix.os }}" == "ubuntu-latest" ]; then
-            nohup python main.py &
+          if [ "${{ matrix.os }}" == "windows-latest" ]; then
+            set PYTHONUNBUFFERED=1
+            start /min python main.py > run_log.txt 2>&1
           else
-            start /min python main.py
+            nohup python main.py > run_log.txt 2>&1 &
           fi
         shell: bash
 
+      - name: Read run log
+        run: |
+          sleep 30
+          cat run_log.txt
+        shell: bash
+
       - name: Test API
-        run: pytest
+        run: |
+          pytest
+          echo "========== Run log: =========="
+          cat run_log.txt
         shell: bash

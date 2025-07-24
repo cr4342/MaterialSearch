@@ -1,3 +1,4 @@
+import logging
 import shutil
 import threading
 from functools import wraps
@@ -5,6 +6,7 @@ from io import BytesIO
 
 from flask import Flask, abort, jsonify, redirect, request, send_file, session, url_for
 
+from config import *
 from database import get_image_path_by_id, is_video_exist, get_pexels_video_count
 from init import *
 from models import DatabaseSession, DatabaseSessionPexelsVideo
@@ -164,19 +166,19 @@ def api_match():
         results = search_image_by_text_path_time(data["positive"], data["negative"], positive_threshold, negative_threshold,
                                                  path, start_time, end_time)
     elif search_type == 1:  # 以图搜图
-        results = search_image_by_image(upload_file_path, image_threshold)
+        results = search_image_by_image(upload_file_path, image_threshold, path, start_time, end_time)
     elif search_type == 2:  # 文字搜视频
         results = search_video_by_text_path_time(data["positive"], data["negative"], positive_threshold, negative_threshold,
                                                  path, start_time, end_time)
     elif search_type == 3:  # 以图搜视频
-        results = search_video_by_image(upload_file_path, image_threshold)
+        results = search_video_by_image(upload_file_path, image_threshold, path, start_time, end_time)
     elif search_type == 4:  # 图文相似度匹配
-        score = match_text_and_image(process_text(data["text"]), process_image(upload_file_path)) * 100
+        score = match_text_and_image(process_text(data["positive"]), process_image(upload_file_path)) * 100
         return jsonify({"score": "%.2f" % score})
     elif search_type == 5:  # 以图搜图(图片是数据库中的)
-        results = search_image_by_image(img_id, image_threshold)
+        results = search_image_by_image(img_id, image_threshold, path, start_time, end_time)
     elif search_type == 6:  # 以图搜视频(图片是数据库中的)
-        results = search_video_by_image(img_id, image_threshold)
+        results = search_video_by_image(img_id, image_threshold, path, start_time, end_time)
     elif search_type == 9:  # 文字搜pexels视频
         results = search_pexels_video_by_text(data["positive"], positive_threshold)
     else:  # 空
@@ -197,12 +199,14 @@ def api_get_image(image_id):
         path = get_image_path_by_id(session, image_id)
         logger.debug(path)
     # 静态图片压缩返回
-    if request.args.get("thumbnail") and os.path.splitext(path)[-1] != "gif":
+    if request.args.get("thumbnail") == "1" and os.path.splitext(path)[-1] != "gif":
+        # 这里转换成RGB然后压缩成JPEG格式返回。也可以不转换RGB，压缩成WEBP格式，这样可以保留透明通道。
+        # 目前暂时使用JPEG格式，如果切换成WEBP，还需要实际测试两者的文件大小和质量。
         image = resize_image_with_aspect_ratio(path, (640, 480), convert_rgb=True)
         image_io = BytesIO()
         image.save(image_io, 'JPEG', quality=60)
         image_io.seek(0)
-        return send_file(image_io, mimetype='image/jpeg')
+        return send_file(image_io, mimetype='image/jpeg', download_name="thumbnail_" + os.path.basename(path))
     return send_file(path)
 
 
@@ -274,7 +278,9 @@ def api_upload():
 
 
 if __name__ == "__main__":
+    pre_init()
     init()
     logging.getLogger('werkzeug').setLevel(LOG_LEVEL)
-    init2()
+    init2()  # 函数定义在加密代码中，请忽略 Unresolved reference 'init2'
+    post_init()
     app.run(port=PORT, host=HOST, debug=FLASK_DEBUG)
